@@ -160,11 +160,29 @@ The Floating-IP (VIP) will not be added or removed on the current Master node in
 
 ### Credential File - Hetzner
 
-Add the File `/etc/hetzner` with your Username and Password
+By default, vip-manager reads Hetzner Robot credentials from `/etc/hetzner`.  
+The file format is:
 
 ```shell
 user="myUsername"
 pass="myPassword"
+```
+Flag:
+You can override the default /etc/hetzner path in three ways (priority: flag > env > yaml):
+```
+--hetzner-cred-file=/etc/hetzner-db1
+```
+Environment:
+
+```
+export VIP_HETZNER_CRED_FILE=/etc/hetzner-db1
+```
+
+YAML:
+
+```
+manager-type: hetzner
+hetzner-cred-file: /etc/hetzner-db1
 ```
 
 ## Debugging

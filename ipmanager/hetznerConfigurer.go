@@ -4,10 +4,13 @@ import (
 	"bufio"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net"
 	"os"
 	"os/exec"
 	"time"
+
+	"github.com/spf13/viper"
 )
 
 const (
@@ -55,10 +58,14 @@ func getOutboundIP() net.IP {
 
 func (c *HetznerConfigurer) curlQueryFailover(post bool) (string, error) {
 	/**
-	 * The credentials for the API are loaded from a file stored in /etc/hetzner .
+	 * The credentials for the API are loaded from a file (default: /etc/hetzner).
+	 * Now configurable via:
+	 *   --hetzner-cred-file, VIP_HETZNER_CRED_FILE, yaml key: hetzner-cred-file
 	 */
-	//TODO: make credentialsFile dynamically changeable?
-	credentialsFile := "/etc/hetzner"
+	credentialsFile := viper.GetString("hetzner-cred-file")
+	if credentialsFile == "" {
+		credentialsFile = "/etc/hetzner"
+	}
 	f, err := os.Open(credentialsFile)
 	if err != nil {
 		log.Error("can't open passwordfile", err)
@@ -75,11 +82,20 @@ func (c *HetznerConfigurer) curlQueryFailover(post bool) (string, error) {
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
 		line := scanner.Text()
+		if len(line) < 4 {
+			continue
+		}
 		switch line[:4] {
 		case "user":
-			user = line[6 : len(line)-1]
+			// expect user="..."
+			if len(line) >= 8 { // minimal length: user=""
+				user = line[6 : len(line)-1]
+			}
 		case "pass":
-			password = line[6 : len(line)-1]
+			// expect pass="..."
+			if len(line) >= 8 {
+				password = line[6 : len(line)-1]
+			}
 		}
 	}
 	if user == "" || password == "" {
