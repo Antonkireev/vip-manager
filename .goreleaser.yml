@@ -5,72 +5,76 @@ before:
     - go mod tidy
 
 builds:
-- env:
-    - CGO_ENABLED=0
-  goos:
-    - linux
-    - windows
-  hooks:
-    pre: go generate ./...
+  - id: vip-manager
+    main: .
+    env: [CGO_ENABLED=0]
+    goos: [linux, windows]
+    goarch: [amd64, arm64, 386]
+    flags: ["-trimpath", "-buildvcs=false"]
+    ldflags:
+      - "-s -w"
+    hooks:
+      pre: go generate ./...
 
 archives:
-- name_template: >-
+  - id: default-archives
+    # vip-manager_1.2.3_Linux_x86_64.tar.gz / vip-manager_1.2.3_Windows_x86_64.zip
+    name_template: >-
       {{ .ProjectName }}_{{ .Version }}_
       {{- title .Os }}_
       {{- if eq .Arch "amd64" }}x86_64
       {{- else if eq .Arch "386" }}i386
       {{- else }}{{ .Arch }}{{ end }}
-  wrap_in_directory: true
-  format_overrides:
-    - goos: windows
-      formats: ['zip']
-  files:
-    - LICENSE
-    - README.md
-    - src: 'vipconfig/*.yml'
-      strip_parent: true
+    wrap_in_directory: true
+    format_overrides:
+      - goos: windows
+        formats: ["zip"]
+    files:
+      - LICENSE*
+      - README*
+      - src: "vipconfig/*.yml"
+        strip_parent: true
 
 checksum:
-  name_template: 'checksums.txt'
+  name_template: "checksums.txt"
 
 changelog:
   sort: asc
   filters:
     exclude:
-    - '^docs:'
-    - '^test:'
+      - "^docs:"
+      - "^test:"
 
+# Пакеты для Linux (deb/rpm). На Windows не применяется.
 nfpms:
-  # note that this is an array of nfpm configs
-  -
+  - id: linux-packages
     file_name_template: >-
       {{ .ProjectName }}_rr_{{ .Version }}_
       {{- title .Os }}_
       {{- if eq .Arch "amd64" }}x86_64
       {{- else if eq .Arch "386" }}i386
       {{- else }}{{ .Arch }}{{ end }}
-
+    formats: [deb, rpm]
     vendor: CYBERTEC PostgreSQL International GmbH
     homepage: https://github.com/cybertec-postgresql/vip-manager/
     maintainer: Julian Markwort <julian.markwort@cybertec.at>
     description: Manages a virtual IP based on state kept in etcd/consul
     license: BSD 2-Clause License
     section: default
-    
     provides:
       - vip-manager
-
-    formats:
-      - deb
-      - rpm
-    
+    bindir: /usr/local/bin
     contents:
       - src: vipconfig/vip-manager.yml
         dst: /etc/default/vip-manager.yml
         type: "config|noreplace"
-
       - src: vip-manager.service
         dst: /lib/systemd/system/vip-manager.service
-
       - src: LICENSE
         dst: /usr/share/doc/vip-manager/LICENSE
+
+release:
+  prerelease: false
+
+snapshot:
+  name_template: "{{ .Tag }}-SNAPSHOT-{{ .ShortCommit }}"
